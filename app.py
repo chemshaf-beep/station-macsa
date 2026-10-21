@@ -18,7 +18,7 @@ import threading
 from flask import Flask, jsonify
 
 # Initialisation obligatoire de l'application Flask requise par l'infrastructure Koyeb
-server = Flask(__name__)
+app = Flask(__name__)
 
 # Interdiction passive des avertissements SSL liés aux infrastructures Falcon
 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
@@ -1670,7 +1670,7 @@ t_master = threading.Thread(target=boucle_metronome_master, daemon=True)
 t_master.start()
 
 # 🎛️ PORT DE RECONNAISSANCE HTTP (Signal d éveil obligatoire exigé par l hébergeur)
-@server.route('/')
+@app.route('/')
 def health_check_node():
     str_mode = "SIMULATION_INTER_CLOUD_ACTIVE" if MODE_SIMULATION_ACTIF else "PRODUCTION_REEL_DIRECT"
     return jsonify({
@@ -1688,6 +1688,6 @@ if __name__ == "__main__":
     port_koyeb = int(os.environ.get("PORT", 8080))
     
     # Armement final et blocage nominal du fil HTTP principal (0% plantage à l amorce)
-    server.run(host="0.0.0.0", port=port_koyeb)
+    app.run(host="0.0.0.0", port=port_koyeb)
 
 
