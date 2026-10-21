@@ -40,8 +40,10 @@ MODE_PRODUCTION = not MODE_SIMULATION_ACTIF
 
 # 🎯 DECOUPLAGE LOGIQUES KOYEB CLOUD : Résolution absolue des répertoires de persistance
 DOSSIER_SCRIPT = os.path.dirname(os.path.abspath(__file__)) 
-REPERTOIRE_HISTO = os.path.join(DOSSIER_SCRIPT, "Historique") 
-REPERTOIRE_JSON = os.path.join(DOSSIER_SCRIPT, "Bourse_MACSA_Cache")
+# 🟢 ROUTAGE SCELLÉ VERS LA ZONE D'ÉCRITURE AUTORISÉE /tmp
+REPERTOIRE_JSON = "/tmp/Bourse_MACSA_Cache"
+REPERTOIRE_HISTO = "/tmp/Historique"
+
 
 # Armement physique et sécurisé des coques de stockage local
 os.makedirs(REPERTOIRE_HISTO, exist_ok=True) 
@@ -1672,14 +1674,27 @@ t_master.start()
 # 🎛️ PORT DE RECONNAISSANCE HTTP (Signal d éveil obligatoire exigé par l hébergeur)
 @app.route('/')
 def health_check_node():
-    str_mode = "SIMULATION_INTER_CLOUD_ACTIVE" if MODE_SIMULATION_ACTIF else "PRODUCTION_REEL_DIRECT"
+    # 🟢 FORCE L'ANALYSE MICROSTRUCTURELLE À CHAQUE APPEL HTTP (CONFORME SERVERLESS)
+    try:
+        recuperer_et_analyser()
+        
+        if os.path.exists(FICHIER_TEXTE_GRILLE):
+            with open(FICHIER_TEXTE_GRILLE, "r", encoding="utf-8-sig") as f:
+                lignes_view = f.readlines()
+            aperçu_matrice = [l.strip().split('\t') for l in lignes_view[:4]]
+        else:
+            aperçu_matrice = "WORKSPACE_READY_WAITING_FOR_TICK"
+    except Exception as e_route:
+        aperçu_matrice = f"CRASH_CALCUL : {str(e_route)}"
+
     return jsonify({
         "status": "HEALTHY",
-        "node_infrastructure": str_mode,
+        "node": "MAC_SA_VERCEL_SERVERLESS_NODE",
         "clock_bvmt": HEURE_CENTRALE_BVMT,
-        "target_url_stream": URL_API,
-        "tarpit_protection": "0% ENABLED (MAX_SPEED)"
+        "write_directory": "/tmp (100% SÉCURISÉ)",
+        "live_matrix_preview": aperçu_matrice
     }), 200
+
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, declencher_coupe_circuit_operateur)
