@@ -1719,6 +1719,55 @@ def health_check_node():
         "write_directory": "/tmp (100% SÉCURISÉ)",
         "live_matrix_preview": aperçu_matrice
     }), 200
+# ==============================================================================
+# 🦅 GATEWAYS EXTRACTRICES DE RAPPORTS DE CLÔTURE (CONFORME VERCEL SERVERLESS)
+# # Rôle : Force la compilation et le téléchargement des fichiers .csv de Place
+# ==============================================================================
+from flask import send_file, make_response
+
+@app.route('/telecharger/historique')
+def telecharger_historique_seance():
+    try:
+        # On force une analyse instantanée pour hydrater les derniers calculs
+        recuperer_et_analyser()
+        
+        # Si le script a généré des lignes dans le registre temporaire /tmp
+        if os.path.exists(FICHIER_HISTO_SEANCE):
+            return send_file(FICHIER_HISTO_SEANCE, mimetype="text/csv", 
+                             as_attachment=True, download_name=os.path.basename(FICHIER_HISTO_SEANCE))
+        
+        # Alternative Serverless : Génération dynamique à la volée depuis la RAM de calcul
+        if df_master_ram_cote is not None:
+            csv_interne = df_master_ram_cote.to_csv(sep=";", index=False, encoding="utf-8")
+            output = make_response(csv_interne)
+            output.headers["Content-Disposition"] = f"attachment; filename={os.path.basename(FICHIER_HISTO_SEANCE)}"
+            output.headers["Content-Type"] = "text/csv"
+            return output
+            
+        return jsonify({"erreur": "Aucune donnée historique accumulée en RAM"}), 404
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 500
+
+@app.route('/telecharger/synthese')
+def telecharger_synthese_cloture():
+    try:
+        recuperer_et_analyser()
+        
+        # Compilation dynamique instantanée de la synthèse microstructurelle de clôture
+        if df_master_ram_cote is not None:
+            # On isole uniquement les métriques de synthèse requises par MAC SA
+            colonnes_synthese = ["SbeMarket SheetValeur", "Dernier", "Var.", "Volume", "Diff_Qte_Nette", "Diff_Vol_Nette", "Imbalance_Carnet"]
+            df_synthese = df_master_ram_cote[colonnes_synthese].copy()
+            
+            csv_synthese = df_synthese.to_csv(sep=";", index=False, encoding="utf-8")
+            output = make_response(csv_synthese)
+            output.headers["Content-Disposition"] = f"attachment; filename={os.path.basename(FICHIER_SYNTHESE_CLOTURE)}"
+            output.headers["Content-Type"] = "text/csv"
+            return output
+            
+        return jsonify({"erreur": "Séance non initialisée"}), 404
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 500
 
 
 if __name__ == "__main__":
