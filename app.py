@@ -1386,41 +1386,54 @@ def boucle_background_aspiration_falcon():
 
 
 def executer_requete_sbe_marche_live():
-    global BUFFER_TEXTE_RESEAU_FALCON, VERROU_PARTAGE_THREAD, MODE_SIMULATION_ACTIF, HEURE_CENTRALE_BVMT
+    global URL_API, HEURE_CENTRALE_BVMT
     
-    # 📡 1. ARMEMENT ET EXPÉDITION DU THREAD D'ARRIÈRE-PLAN (0% LATENCE CPU)
-    if not hasattr(executer_requete_sbe_marche_live, "thread_lance"):
-        executer_requete_sbe_marche_live.thread_lance = True
-        t_bg = threading.Thread(target=boucle_background_aspiration_falcon, daemon=True)
-        t_bg.start()
-        print("[*] 📡 Thread asynchrone d'arrière-plan Falcon SBE initialisé sur Koyeb Node.")
+    text_brut = ""
+    # 📡 1. CAPTATION SYNCHRONE SCELLÉE (0% THREAD FANTÔME POUR VERCEL SERVERLESS)
+    try:
+        session_falcon = requests.Session()
+        session_falcon.headers.update({"User-Agent": "Mozilla/5.0 MAC-SA-QUANT-NODE"})
+        # Koyeb/Vercel interroge directement l'API cible à la milliseconde de l'appel HTTP
+        reponse = session_falcon.get(URL_API, verify=False, timeout=3.0)
+        
+        if reponse.status_code == 200:
+            reponse.encoding = 'latin1'
+            txt_recu = reponse.text
+            if txt_recu and ";" in txt_recu and len(txt_recu) > 500:
+                text_brut = txt_recu
+    except Exception as e_net:
+        print(f"⚠️ Alerte Ingestion Synchrone Vercel : {str(e_net)}")
 
-    # Extraction sécurisée du tampon réseau partagé
-    with VERROU_PARTAGE_THREAD:
-        text_brut = BUFFER_TEXTE_RESEAU_FALCON
+    # Trame de secours synchronisée sur l'horloge PC si le flux boursier est coupé
+    if not text_brut:
+        h_fill = time.strftime("%H%M%S")
+        secours = "SbeMarket SheetValeur;Etat;Qt. A;Achat;Vente;Qt.V;Clôture;CTO;VTO;Ouverture;Dernier;Var.;CMP;Qté;Volume;P. Haut;P. Bas;Seuil.S. Haut;Seuil.S. Bas;Seuil.D. Haut;Seuil.D. Bas;Heure\n"
+        for tk in LISTE_VALEURS_UNIFIEES:
+            secours += f"{tk};5;0;0;0;0;10.0;0;0;0;10.0;0;10.0;0;0;10.0;10.0;10.6;9.4;10.3;9.7;{h_fill}\n"
+        text_brut = secours
 
-    # 📡 2. ALIGNEMENT COMPTABLE DE L'HORLOGE VIRTUELLE EN MODE SIMULATION INTER-CLOUD
-    if 'MODE_SIMULATION_ACTIF' in globals() and MODE_SIMULATION_ACTIF:
-        if text_brut and ";" in text_brut and len(text_brut) > 500:
-            try:
-                # Dépistage inversé ultrarapide pour intercepter le dernier horodatage valide de la Place
-                lignes_calcul = text_brut.split('\n')
-                for idx_l in range(len(lignes_calcul) - 1, -1, -1):
-                    ligne_temoin = lignes_calcul[idx_l].strip()
-                    
-                    # On isole strictly une ligne d'instrument peuplée (colonne 22 présente)
-                    if ';' in ligne_temoin and "SbeMarket" not in ligne_temoin and "Total" not in ligne_temoin:
-                        elements = ligne_temoin.split(';')
-                        if len(elements) >= 22:
-                            h_brut = str(elements[21]).strip().replace(":", "")
-                            if h_brut.isdigit() and len(h_brut) == 6:
-                                # Synchronisation impérative de l'oscilloscope central de séance (hh:mm:ss)
-                                HEURE_CENTRALE_BVMT = f"{h_brut[:2]}:{h_brut[2:4]}:{h_brut[4:6]}"
-                                break  # Alignement réussi, on quitte le balayage
-            except:
-                pass
+    # 📡 2. ALIGNEMENT COMPTABLE UNIVERSEL DE L'HORLOGE (RÉEL ET SIMULATION)
+    if text_brut and ";" in text_brut and len(text_brut) > 500:
+        try:
+            # Balayage inversé rapide pour intercepter l'horodatage le plus récent de la séance
+            lignes_calcul = text_brut.split('\n')
+            for idx_l in range(len(lignes_calcul) - 1, -1, -1):
+                ligne_temoin = lignes_calcul[idx_l].strip()
+                
+                # On isole strictly une ligne d'instrument dotée de la colonne Heure (index 21)
+                if ';' in ligne_temoin and "SbeMarket" not in ligne_temoin and "Total" not in ligne_temoin:
+                    elements = ligne_temoin.split(';')
+                    if len(elements) >= 22:
+                        h_brut = str(elements[21]).strip().replace(":", "")
+                        if h_brut.isdigit() and len(h_brut) == 6:
+                            # Synchronisation impérative de la variable globale maîtresse (hh:mm:ss)
+                            HEURE_CENTRALE_BVMT = f"{h_brut[:2]}:{h_brut[2:4]}:{h_brut[4:6]}"
+                            break  # Alignement réussi, on quitte le balayage
+        except Exception as e_clock:
+            print(f"⚠️ Exception Extraction Horloge : {e_clock}")
 
     return text_brut
+
 
 
 
@@ -1510,8 +1523,20 @@ def declencher_coupe_circuit_operateur(signum, frame):
         sys.stdout.flush()
         
     os._exit(0)
-
-
+# ==============================================================================
+# ⏳ FONCTION METROLOGIQUE DE PROTECTION DU TEMPS MONOTONE DE PLACE
+# # Rôle : Compare deux chaînes hh:mm:ss et garantit l'absence de retour en arrière
+# ==============================================================================
+def Hospitalier_max_time(time_str_a, time_str_b=None):
+    if time_str_b is None:
+        return time_str_a
+    try:
+        # Conversion arithmétique brute pour une confrontation ultra-rapide
+        int_a = int(str(time_str_a).replace(":", ""))
+        int_b = int(str(time_str_b).replace(":", ""))
+        return time_str_a if int_a > int_b else time_str_b
+    except:
+        return time_str_a
 
 # ==============================================================================
 # 🦅 STATION QUANTITATIVE MAC SA : NOYAU ANALYTIQUE MICROSTRUCTUREL REEL LIVE
@@ -1567,37 +1592,37 @@ def recuperer_et_analyser():
     # Sauvegarde de persistance pour le bouclier anti-retour en arrière
     derniere_heure_marche_detectee = HEURE_CENTRALE_BVMT
     
+    # ==============================================================================
+    # 🎯 ALGORITHME DE PROTECTION DE L'HORLOGE MONOTONE CONTRE LES FLUX ASYNCHRONES
+    # ==============================================================================
     if heure_maximale_detectee_brute != "000000":
-        # Reconstruction propre au format hh:mm:ss pour l ADODB d Excel
+        # Reconstruction synchrone au format officiel hh:mm:ss
         heure_proposee = f"{heure_maximale_detectee_brute[:2]}:{heure_maximale_detectee_brute[2:4]}:{heure_maximale_detectee_brute[4:6]}"
     else:
-        # 🎯 CANAL PASSIF DE SÛRETÉ (REPLI PC-2S BORNÉ)
-        if MODE_SIMULATION_ACTIF:
-            heure_proposee = Hospitalier_max_time(derniere_heure_marche_detectee)
+        # Canal de repli passif si la trame boursière est vierge d'horodatage
+        if 'MODE_SIMULATION_ACTIF' in globals() and MODE_SIMULATION_ACTIF:
+            heure_proposee = derniere_heure_marche_detectee
         else:
-            heure_extrapolee_pc = maintenant_obj - datetime.timedelta(seconds=2)
-            heure_proposee = heure_extrapolee_pc.strftime("%H:%M:%S")
-
-    # ==============================================================================
-    # 🎯 BARRIÈRE DE PROTECTION MATRICIELLE MONOTONIQUE : VERROU STRICTEMENT SUPÉRIEUR
-    # ==============================================================================
-    if heure_proposee < Hospitalier_max_time(derniere_heure_marche_detectee):
-        HEURE_CENTRALE_BVMT = Hospitalier_max_time(derniere_heure_marche_detectee)
-    else:
+            heure_proposee = maintenant_obj.strftime("%H:%M:%S")
+  
+    # Confrontation directe : l'horloge ne peut progresser que vers l'avant
+    try:
+        int_proposee = int(heure_proposee.replace(":", ""))
+        int_derniere = int(derniere_heure_marche_detectee.replace(":", ""))
+        
+        if int_proposee > int_derniere:
+            HEURE_CENTRALE_BVMT = heure_proposee
+        else:
+            HEURE_CENTRALE_BVMT = derniere_heure_marche_detectee
+    except:
         HEURE_CENTRALE_BVMT = heure_proposee
 
+    # Bornage de clôture réglementaire de la Bourse de Tunis (Anti-débordement hors-séance)
     if HEURE_CENTRALE_BVMT >= heure_limite_cloture:
         HEURE_CENTRALE_BVMT = heure_limite_cloture
 
-    # Propulsion directe vers l unificateur de DataFrame
+    # Propulsion directe et intègre vers l'unificateur microstructurel Pandas
     filtrer_et_unifier_dataframe_cote(df_paquet_instantane, None, regime_actif, debut_calcul)
-
-def Hospitalier_max_time(heure_str):
-    """Sécurise le formatage de la chaîne de persistance sans aucune régression."""
-    if not heure_str or str(heure_str).strip() == "" or "--" in str(heure_str):
-        return "08:30:00"
-    return str(heure_str).strip()
-
 
 
 
