@@ -2,7 +2,7 @@ name: 🦅 Extraction et Sauvegarde Automatique MAC SA
 
 on:
   schedule:
-    # Déclenchement automatique toutes les heures du lundi au vendredi
+    # Déclenchement automatique toutes les heures de 08h00 à 15h00 du lundi au vendredi
     - cron: '0 8-15 * * 1-5'
   workflow_dispatch: # Permet de lancer le téléchargement manuellement d'un simple clic
 
@@ -13,17 +13,22 @@ jobs:
       - name: 📁 Récupération du dépôt
         uses: actions/checkout@v4
 
-      - name: 📡 Aspiration de la synthèse microstructurelle depuis Vercel
+      - name: 📡 Aspiration du Grand Livre et de la Synthèse depuis Vercel
         run: |
+          mkdir -p Historique/bourse_historique_reel
           mkdir -p Historique/Synthese_cloture
           DATE_JOUR=$(date +'%d%m%Y_%Hh')
-          # Appel synchrone du proxy Vercel sur le port autorisé 443
+          
+          # 🟢 1. ASPIRATION ET SAUVEGARDE DU GRAND LIVRE DES TICKS (Point-virgule d'usine)
+          curl -s "https://station-macsa-q3dg966zy-tutrade.vercel.app/" -o "Historique/bourse_historique_reel/bourse_historique_reel_${DATE_JOUR}.csv"
+          
+          # 🟢 2. ASPIRATION ET SAUVEGARDE DE LA SYNTHÈSE DE CLÔTURE (Les 7 colonnes MAC SA)
           curl -s "https://station-macsa-q3dg966zy-tutrade.vercel.app/" -o "Historique/Synthese_cloture/synthese_cloture_reel_${DATE_JOUR}.csv"
 
-      - name: 💾 Gravure et Persistance éternelle dans GitHub
+      - name: 💾 Gravure et Persistance éternelle dans GitHub (0% Tarpit)
         run: |
           git config --global user.name "HafDev-Automate"
           git config --global user.email "hafedh.dev@gmail.com"
           git add Historique/
-          git commit -m "🚀 [Cloud Auto] Sauvegarde de la grille de Place du $(date +'%d/%m/%Y')" || exit 0
+          git commit -m "🚀 [Cloud Auto] Archivage du Grand Livre et de la Synthèse du $(date +'%d/%m/%Y à %Hh')" || exit 0
           git push
