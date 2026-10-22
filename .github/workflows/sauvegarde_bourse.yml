@@ -1,0 +1,29 @@
+name: 🦅 Extraction et Sauvegarde Automatique MAC SA
+
+on:
+  schedule:
+    # Déclenchement automatique toutes les heures du lundi au vendredi
+    - cron: '0 8-15 * * 1-5'
+  workflow_dispatch: # Permet de lancer le téléchargement manuellement d'un simple clic
+
+jobs:
+  moissonner:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📁 Récupération du dépôt
+        uses: actions/checkout@v4
+
+      - name: 📡 Aspiration de la synthèse microstructurelle depuis Vercel
+        run: |
+          mkdir -p Historique/Synthese_cloture
+          DATE_JOUR=$(date +'%d%m%Y_%Hh')
+          # Appel synchrone du proxy Vercel sur le port autorisé 443
+          curl -s "https://station-macsa-q3dg966zy-tutrade.vercel.app/" -o "Historique/Synthese_cloture/synthese_cloture_reel_${DATE_JOUR}.csv"
+
+      - name: 💾 Gravure et Persistance éternelle dans GitHub
+        run: |
+          git config --global user.name "HafDev-Automate"
+          git config --global user.email "hafedh.dev@gmail.com"
+          git add Historique/
+          git commit -m "🚀 [Cloud Auto] Sauvegarde de la grille de Place du $(date +'%d/%m/%Y')" || exit 0
+          git push
