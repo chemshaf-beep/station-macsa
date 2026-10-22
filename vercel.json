@@ -8,8 +8,17 @@
   ],
   "routes": [
     {
+      "src": "/telecharger/historique",
+      "dest": "app.py"
+    },
+    {
+      "src": "/telecharger/synthese",
+      "dest": "app.py"
+    },
+    {
       "src": "/(.*)",
       "dest": "app.py"
     }
   ]
 }
+
